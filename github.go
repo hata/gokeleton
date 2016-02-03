@@ -3,7 +3,6 @@ package main
 import (
     "archive/zip"
     "bytes"
-    "encoding/base64"
     "errors"
     "github.com/google/go-github/github"
     "io"
@@ -23,6 +22,7 @@ type githubAccess struct {
 
 type githubFileSource struct {
     file *zip.File
+    path string
 }
 
 func newGithubAccess(githubHTMLURL string) (ga *githubAccess) {
@@ -32,9 +32,10 @@ func newGithubAccess(githubHTMLURL string) (ga *githubAccess) {
     return
 }
 
-func newGithubFileSource(zipFile *zip.File) (gf *githubFileSource) {
+func newGithubFileSource(zipFile *zip.File, path string) (gf *githubFileSource) {
     gf = new(githubFileSource)
     gf.file = zipFile
+    gf.path = path
     return
 }
 
@@ -46,7 +47,22 @@ func (ga *githubAccess) EachSource(callback FileSourceFunc) (err error) {
     }
 
     for _, f := range zipReader.File {
-        err = callback(newGithubFileSource(f))
+        name := f.Name
+        index := strings.Index(name, "/")
+        if index != -1 {
+            name = name[index + 1:]
+        }
+        baseLen := len(ga.basePath)
+        if baseLen > 0 {
+            index = strings.Index(name, ga.basePath)
+            if index != 0 {
+                continue
+            }
+            name = name[baseLen + 1:]
+        }
+
+        // Check file should be called or not
+        err = callback(newGithubFileSource(f, name))
         if err != nil {
             return err
         }
@@ -56,71 +72,20 @@ func (ga *githubAccess) EachSource(callback FileSourceFunc) (err error) {
 }
 
 // FileSource
-func (gf *githubFileSource) Name() (name string) {
-    name = gf.file.Name
-    index := strings.Index(name, "/")
-    if index != -1 {
-        name = name[index + 1:]
-    }
-    return
+func (gf *githubFileSource) SubPath() string {
+    return gf.path
 }
 
 func (gf *githubFileSource) Reader() (io.ReadCloser, error) {
     return gf.file.Open()
 }
 
-
-/*
-func (ga *githubAccess) getReadme(githubURL string) (readme string, err error) {
-    err = ga.parseURL(githubURL)
-    if err != nil {
-        return "", err
-    }
-
-    fileContent, _, err := ga.client.Repositories.GetReadme(ga.owner, ga.repos, nil)
-    fmt.Println("error: ", err)
-    fmt.Println("Encoding: ", *fileContent.Encoding)
-
-    content, err := decodeContentString(fileContent)
-    if err != nil {
-        return "", err
-    }
-
-    return content, nil
-}
-
-func (ga *githubAccess) getContents(githubBlobURL string) (contents []byte, err error) {
-    err = ga.parseURL(githubBlobURL)
-    if err != nil {
-        return nil, err
-    }
-
-    fileContent, directoryContent, resp, err := ga.client.Repositories.GetContents(ga.owner, ga.repos, ga.basePath, nil)
-
-    fmt.Println("basePath:", ga.basePath)
-    fmt.Println("fileContent:", fileContent)
-    fmt.Println("directoryContent:", directoryContent)
-    fmt.Println("resp:", resp)
-    fmt.Println("err:", err)
-
-    if err != nil {
-        return
-    }
-
-    if fileContent != nil {
-        contents, err = decodeContent(fileContent)
-    }
-
-    return
-}
-*/
-
 func (ga *githubAccess) getZipArchive() (zipReader *zip.Reader, err error) {
     var archiveURL *url.URL
     var httpResponse *http.Response
     var zipBytes []byte
 
-    err = ga.parseURL(ga.url)
+    err = ga.parseURL()
     if err != nil {
         return nil, err
     }
@@ -148,8 +113,8 @@ func (ga *githubAccess) getZipArchive() (zipReader *zip.Reader, err error) {
     return
 }
 
-func (ga *githubAccess) parseURL(githubURL string) error {
-    url, err := url.Parse(githubURL)
+func (ga *githubAccess) parseURL() error {
+    url, err := url.Parse(ga.url)
     if err != nil {
         return err
     }
@@ -182,68 +147,3 @@ func (ga *githubAccess) parseURL(githubURL string) error {
     ga.basePath = strings.Join(pathElements[5:], "/")
     return nil
 }
-
-/*
-func (ga *githubAccess)walkFiles(githubHTMLURL string) (map[string]string, error) {
-    err := ga.parseURL(githubHTMLURL)
-    if err != nil {
-        return nil, err
-    }
-
-    contentMap := map[string]string{}
-
-    err = ga.walkContents(contentMap, ga.basePath)
-    if err != nil {
-        return nil, err
-    }
-
-    return contentMap, nil
-}
-
-func (ga *githubAccess)walkContents(contentMap map[string]string, path string) error {
-    fileContent, directoryContent, _, err := ga.client.Repositories.GetContents(ga.owner, ga.repos, path, nil)
-
-    if err != nil {
-        return err
-    }
-
-    if directoryContent != nil && fileContent == nil {
-        for _, dirContent := range directoryContent {
-            ga.walkContents(contentMap, *dirContent.Path)
-        }
-    } else if fileContent != nil {
-        var data string
-        data, err = decodeContentString(fileContent)
-        if err != nil {
-            return err
-        }
-        contentMap[*fileContent.Path] = data  // *fileContent.DownloadURL
-    } else {
-        return errors.New("No data was returned.")
-    }
-
-    return nil
-}
-*/
-
-func decodeContentString(repos *github.RepositoryContent) (string, error) {
-    data, err := decodeContent(repos)
-    if err != nil {
-        return "", err
-    } else {
-        return string(data), nil
-    }
-}
-
-func decodeContent(repos *github.RepositoryContent) ([]byte, error) {
-    if *repos.Encoding == "base64" {
-        data, err := base64.StdEncoding.DecodeString(*repos.Content)
-        if err != nil {
-            return nil, err
-        }
-        return data, nil
-    } else {
-        return nil, errors.New("No supported encoding is found")
-    }
-}
-

@@ -6,7 +6,7 @@ import (
 )
 
 type FileSource interface {
-    Name() string
+    SubPath() string
     Reader() (io.ReadCloser, error)
 }
 

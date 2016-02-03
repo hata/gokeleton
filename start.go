@@ -1,9 +1,20 @@
 package main
 
 import (
+    "io"
     "strings"
 )
 
+type FileSource interface {
+    Name() string
+    Reader() (io.ReadCloser, error)
+}
+
+type FileSourceFunc func(fileSource FileSource) error
+
+type SourceAccess interface {
+    EachSource(callback FileSourceFunc) error
+}
 
 type StartParams struct {
     Keywords string

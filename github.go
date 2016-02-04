@@ -76,6 +76,10 @@ func (gf *githubFileSource) SubPath() string {
     return gf.path
 }
 
+func (gf *githubFileSource) IsDir() bool {
+    return gf.file.FileInfo().IsDir()
+}
+
 func (gf *githubFileSource) Reader() (io.ReadCloser, error) {
     return gf.file.Open()
 }

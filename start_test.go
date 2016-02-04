@@ -132,3 +132,31 @@ func Test_toSubPath(t *testing.T) {
     }
 }
 
+func Test_newReplaceFunc_contents(t *testing.T) {
+    rf := newReplaceFunc(map[string]string{"foo":"bar"})
+    subPath, contents, err := rf("subPath", "foo,foo,foo,bar,bar,bar")
+    if subPath != "subPath" {
+        t.Error("Verify subPath is returned.")
+    }
+    if contents != "bar,bar,bar,bar,bar,bar" {
+        t.Error("Verify replacing keywords work well.")
+    }
+    if err != nil {
+        t.Error("Verify no error found")
+    }
+}
+
+
+func Test_newReplaceFunc_subPath(t *testing.T) {
+    rf := newReplaceFunc(map[string]string{"foo":"bar"})
+    subPath, contents, err := rf("foo/foo", "foo,bar,fo")
+    if subPath != "bar/bar" {
+        t.Error("Verify bar/bar is returned.")
+    }
+    if contents != "bar,bar,fo" {
+        t.Error("Verify replacing keywords work well.")
+    }
+    if err != nil {
+        t.Error("Verify no error found")
+    }
+}

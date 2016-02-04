@@ -85,7 +85,7 @@ func newSourceAccess(srcPath string) SourceAccess {
 }
 
 func copyEachFileSource(destPath string, sa SourceAccess, handler ReplaceFunc) error {
-    suffixes := []string{".txt"}
+    suffixes := []string{".txt", ".htm", ".html", ".md", ".go", ".rb", ".c", ".h", ".cpp"}
 
     return sa.EachSource(func(fileSource FileSource) error {
         var isDir bool
@@ -159,6 +159,12 @@ func newReplaceFunc(keywords map[string]string) ReplaceFunc {
     return func (srcSubPath string, srcContents string) (subPath string, contents string, err error) {
         subPath = srcSubPath
         contents = srcContents
+
+        for key, val := range keywords {
+            subPath = strings.Replace(subPath, key, val, -1)
+            contents = strings.Replace(contents, key, val, -1)
+        }
+
         err = nil
         return
     }

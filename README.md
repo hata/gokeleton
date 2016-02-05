@@ -1,10 +1,30 @@
 # gokeleton
 
-Skeleton generator
+Skeleton Generator
 
 ## Description
 
+Copy and replace keywords to generate skeleton files from local or github repository written by Go
+
 ## Usage
+
+```bash
+gokeleton -p "key1=value1,key2=value2" <src-path> <dest-path>
+```
+
+For example, copy from github repository
+
+```bash
+gokeleton -p "key=value" https://github.com/hata/gokeleton /tmp/test
+```
+
+Copy from a local directory
+
+```bash
+gokeleton -p "key=value" /local/template/path /tmp/test
+```
+
+Replace 'key' with 'value' if these keys are found in files.
 
 ## Install
 

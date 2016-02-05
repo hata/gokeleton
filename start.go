@@ -27,53 +27,27 @@ type StartParams struct {
     Keywords string
     KeySeparator string
     Arguments []string
+    IncludeSuffixes string
+    ExcludeSuffixes string
 }
 
 func StartMain(sp StartParams) error {
-    if sp.KeySeparator == "" {
-        sp.KeySeparator = ","
-    }
-
     srcPath := sp.Arguments[0]
     destPath := sp.Arguments[1]
     keyMap := stringsToMap(sp.Keywords, sp.KeySeparator)
+    includeSuffixes := toList(sp.IncludeSuffixes, sp.KeySeparator)
+    excludeSuffixes := toList(sp.ExcludeSuffixes, sp.KeySeparator)
 
     _, err := os.Stat(destPath)
     if os.IsNotExist(err) {
         sa := newSourceAccess(srcPath)
-        return copyEachFileSource(destPath, sa, newReplaceFunc(keyMap))
+        return copyEachFileSource(sa, destPath, includeSuffixes, excludeSuffixes, newReplaceFunc(keyMap))
     } else if err != nil {
         return err
     } else {
         fmt.Fprintln(os.Stderr, "Error: dest path:", destPath, " already exists")
         return os.ErrExist
     }
-}
-
-func stringsToMap(keywords string, sep string) (keyMap map[string]string) {
-    var key, value string
-    keyMap = map[string]string{}
-
-    if len(keywords) == 0 {
-        return
-    }
-
-    pairs := strings.Split(keywords, sep)
-
-    for _, kv := range pairs {
-        index := strings.IndexByte(kv, '=')
-        if index >= 0 {
-            key = kv[0:index]
-            value = kv[index + 1:]
-        } else {
-            key = kv
-            value = ""
-        }
-
-        keyMap[key] = value
-    }
-
-    return
 }
 
 func newSourceAccess(srcPath string) SourceAccess {
@@ -84,11 +58,9 @@ func newSourceAccess(srcPath string) SourceAccess {
     }
 }
 
-func copyEachFileSource(destPath string, sa SourceAccess, handler ReplaceFunc) error {
-    suffixes := []string{".txt", ".htm", ".html", ".md", ".go", ".rb", ".c", ".h", ".cpp"}
-
+func copyEachFileSource(sa SourceAccess, destPath string, includeSuffixes []string, excludeSuffixes []string, handler ReplaceFunc) error {
     return sa.EachSource(func(fileSource FileSource) error {
-        var isDir bool
+        var isDestDir bool
         var contentBytes []byte
         var subPath, contents string
 
@@ -111,7 +83,8 @@ func copyEachFileSource(destPath string, sa SourceAccess, handler ReplaceFunc) e
             return err
         }
 
-        if isMatchSuffixes(suffixes, fileSource.SubPath()) {
+        if isMatchSuffixes(includeSuffixes, fileSource.SubPath()) &&
+          !isMatchSuffixes(excludeSuffixes, fileSource.SubPath()) {
             subPath, contents, err = handler(fileSource.SubPath(), string(contentBytes))
             if err != nil {
                 return err
@@ -121,12 +94,11 @@ func copyEachFileSource(destPath string, sa SourceAccess, handler ReplaceFunc) e
             subPath = fileSource.SubPath()
         }
 
-        isDir, err = isDirectory(destPath)
-        if err != nil {
-            return err
-        }
+        // This is expected to be created before calling here.
+        // Or, ignore error for a dest file is used.
+        isDestDir, err = isDirectory(destPath)
 
-        newFilePath := normalizePath(destPath, isDir) + subPath
+        newFilePath := normalizePath(destPath, isDestDir) + subPath
         out, outErr := os.Create(newFilePath)
         if outErr != nil {
             return outErr
@@ -148,7 +120,7 @@ func copyEachFileSource(destPath string, sa SourceAccess, handler ReplaceFunc) e
 
 func isMatchSuffixes(suffixes []string, name string) bool {
     for _, suffix := range suffixes {
-        if strings.HasSuffix(name, suffix) {
+        if suffix == "*" || strings.HasSuffix(name, suffix) {
             return true
         }
     }
@@ -194,3 +166,37 @@ func isDirectory(path string) (isDir bool, err error) {
     return fInfo.IsDir(), nil
 }
 
+func stringsToMap(keywords string, sep string) (keyMap map[string]string) {
+    var key, value string
+    keyMap = map[string]string{}
+
+    if len(keywords) == 0 {
+        return
+    }
+
+    pairs := strings.Split(keywords, sep)
+
+    for _, kv := range pairs {
+        index := strings.IndexByte(kv, '=')
+        if index >= 0 {
+            key = kv[0:index]
+            value = kv[index + 1:]
+        } else {
+            key = kv
+            value = ""
+        }
+
+        keyMap[key] = value
+    }
+
+    return
+}
+
+func toList(listString string, sep string) []string {
+    list := strings.Split(listString, sep)
+    result := make([]string, len(list), len(list))
+    for i, v := range list {
+        result[i] = strings.TrimSpace(v)
+    }
+    return result
+}

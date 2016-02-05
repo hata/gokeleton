@@ -13,6 +13,10 @@ const (
 	ExitCodeWrongArguments
 )
 
+const DefaultIncludeSuffixes = "*"
+const DefaultExcludeSuffixes = ".bin,.jpg,.jpeg,.png,.gif"
+const DefaultKeySeparator = ","
+
 // CLI is the command line object
 type CLI struct {
 	// outStream and errStream are the stdout and stderr
@@ -25,8 +29,9 @@ func (cli *CLI) Run(args []string) int {
 	var (
 		params    string
 		arguments []string
-
 		version bool
+        excludes string
+        includes string
 	)
 
 	// Define option flag parse
@@ -38,6 +43,12 @@ func (cli *CLI) Run(args []string) int {
 
 	flags.BoolVar(&version, "version", false, "Print version information and quit.")
 	flags.BoolVar(&version, "v", false, "Print version information and quit(Short).")
+
+    flags.StringVar(&includes, "includes", DefaultIncludeSuffixes, "Include filtering suffixes(e.g. .txt,.html)")
+    flags.StringVar(&includes, "i", DefaultIncludeSuffixes, "Include filtering suffixes")
+
+    flags.StringVar(&excludes, "excludes", DefaultExcludeSuffixes, "Exclude filtering suffixes")
+    flags.StringVar(&excludes, "e", DefaultExcludeSuffixes, "Exclude filtering suffixes")
 
 	// Parse commandline flag
 	if err := flags.Parse(args[1:]); err != nil {
@@ -60,7 +71,14 @@ func (cli *CLI) Run(args []string) int {
 		return ExitCodeWrongArguments
 	}
 
-	err := StartMain(StartParams{Keywords: params, Arguments: arguments})
+    startParams := StartParams{
+        Keywords: params,
+        Arguments: arguments,
+        IncludeSuffixes: includes,
+        ExcludeSuffixes: excludes,
+        KeySeparator: DefaultKeySeparator}
+
+	err := StartMain(startParams)
     if err != nil {
         return ExitCodeError
     }

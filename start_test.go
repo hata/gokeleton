@@ -81,6 +81,12 @@ func Test_isMatchSuffixes_unmatched(t *testing.T) {
     }
 }
 
+func Test_isMatchSuffixes_wildcard(t *testing.T) {
+    if !isMatchSuffixes([]string{"*"}, "/tmp/test.txt") {
+        t.Error("Verify wildcard match everything")
+    }
+}
+
 func Test_isDirectory_not_found(t *testing.T) {
     dir, err := isDirectory("/tmp_not_found")
     if dir {
@@ -158,5 +164,19 @@ func Test_newReplaceFunc_subPath(t *testing.T) {
     }
     if err != nil {
         t.Error("Verify no error found")
+    }
+}
+
+func Test_toList(t *testing.T) {
+    list := toList("a,b,c", ",")
+    if !(list[0] == "a" && list[1] == "b" && list[2] == "c") {
+        t.Error("Verify list is separated correctly")
+    }
+}
+
+func Test_toList_Space(t *testing.T) {
+    list := toList(" a,b ,  c ", ",")
+    if !(list[0] == "a" && list[1] == "b" && list[2] == "c") {
+        t.Error("Verify list is separated correctly")
     }
 }

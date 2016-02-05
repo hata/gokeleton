@@ -1,7 +1,6 @@
 package main
 
 import (
-    "fmt"
     "testing"
 )
 
@@ -84,13 +83,9 @@ func Test_getZipArchive(t *testing.T) {
 
 func Test_getZipArchive_checkZipArchive(t *testing.T) {
     ga := newGithubAccess(sampleURL)
-    zipReader, err := ga.getZipArchive()
+    _, err := ga.getZipArchive()
     if err != nil {
         t.Error("There is an error to getarchive 2 " + err.Error())
-    }
-
-    for _, f := range zipReader.File {
-        fmt.Println("File: ", *f)
     }
 }
 
@@ -101,7 +96,6 @@ func Test_EachSource(t *testing.T) {
         if fs.SubPath() == ".gitignore" {
             found = true
         }
-        fmt.Println("Each File: " + fs.SubPath())
         return nil
     })
     if !found {
@@ -114,7 +108,6 @@ func Test_EachSource_for_directory(t *testing.T) {
     fileFound := false
     ga := newGithubAccess(sampleURL + "/book")
     ga.EachSource(func (fs FileSource) error {
-        fmt.Println("Each File: " + fs.SubPath())
         if fs.SubPath() == ".gitignore" {
             gitIgnoreFound = true
         }
